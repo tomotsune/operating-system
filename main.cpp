@@ -204,13 +204,11 @@ int allocate_memory(int length) {
     } else if (iter->length > length) {
         int left_length = iter->length - length;
         int begin = iter->begin;
-        memory_list.erase(iter);
-        memory_list.emplace_back(partition{
-                begin,
-                length,
-                OCCUPIED
-        });
-        memory_list.emplace_back(partition{
+
+        iter->status = OCCUPIED;
+        iter->length = length;
+
+        memory_list.insert(++iter, partition{
                 begin + length,
                 left_length,
                 UNOCCUPIED
@@ -238,6 +236,7 @@ int free_memory(int pid) {
 
     // Locate the partition in memory_list.
     std::list<partition>::iterator iter;
+
     for (iter = memory_list.begin(); iter != memory_list.end(); iter++) {
         if (iter->begin == begin) {
             break;
@@ -250,15 +249,18 @@ int free_memory(int pid) {
     iter->status = UNOCCUPIED;
 
     // It's of importance to save the origin iter.
+
     auto temp_iter{iter};
-    auto prior_iter = iter == memory_list.begin() ? temp_iter : --temp_iter;
-    auto next_iter = memory_list.end() == ++temp_iter ? temp_iter : ++temp_iter;
+    std::list<partition>::iterator prior_iter;
+    if (memory_list.begin() == temp_iter) {
+        prior_iter = temp_iter;
+    } else {
+        prior_iter = --temp_iter;
+        temp_iter++;
+    }
 
-    int test_2 = prior_iter->begin;
-    int test_1 = next_iter->begin; //
+    auto next_iter = memory_list.end() == ++temp_iter ? iter : temp_iter;
 
-    int test_3 = iter->begin;
-    int test_4 = iter->length;
 
     if (iter != prior_iter &&
         prior_iter->begin + prior_iter->length == iter->begin &&
