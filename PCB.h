@@ -6,7 +6,9 @@
 #define OS_1_PCB_H
 
 #include <ostream>
+#include <bitset>
 
+using std::bitset;
 /**
  * Process Control Block
  * Created by haipinHu on 5/15/2021
@@ -57,6 +59,32 @@ struct partition {
         if (partition.status == OCCUPIED)os << "OCCUPIED";
         else if (partition.status == UNOCCUPIED)os << "UNOCCUPIED";
         return os;
+    }
+};
+
+struct bitmap {
+    static const int pageFormSize = 4;
+    std::vector<bitset<16>> data;
+    int availablePageNum;
+    int wordNum;
+
+    bitmap() {}
+
+    bitmap(int length) : availablePageNum(length / pageFormSize), wordNum(availablePageNum / 16),
+                         data(std::vector<bitset<16>>(wordNum)) {}
+
+    int operator[](const int index) const {
+        return data[index / wordNum][index % wordNum];
+    }
+
+    void set(const int index) {
+        data[index / wordNum].set(index % wordNum);
+        availablePageNum -= 1;
+    }
+
+    void reset(const int index) {
+        data[index / wordNum].reset(index % wordNum);
+        availablePageNum += 1;
     }
 };
 

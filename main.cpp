@@ -4,12 +4,15 @@
 #include <regex>
 #include "PCB.h"
 
+#define PAGE_SIZE 4
 std::list<PCB> ready_queue;
 std::list<PCB> run_queue;
 std::list<PCB> block_queue;
 std::list<partition> memory_list;
 int u_bound = 0, l_bound = 0;
+bitmap bitmap;
 int ID_INDEX = 1;
+
 
 int allocate_memory(int length);
 
@@ -35,6 +38,7 @@ int main() {
         std::cout << "***Upper bound must be bigger than lower***" << std::endl;
         goto INPUT;
     }
+    bitmap = bitmap(u_bound - l_bound);
     std::cout << "-------------INSTRUCTIONS------------" << std::endl;
     std::cout << "ONE: OperationCode + PID/SPACE" << std::endl;
     std::cout << "  1-->Create a new process" << std::endl;
@@ -180,6 +184,9 @@ int suspend_process(int pid) {
  * @return -1 :false, a integer :staring location.
  */
 int allocate_memory(int length) {
+    int pageNum = length / PAGE_SIZE + 1;
+
+
     if (length <= 0 && u_bound - l_bound < length)return -1;
     if (memory_list.empty()) {
         memory_list.emplace_back(
