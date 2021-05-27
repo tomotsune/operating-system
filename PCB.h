@@ -19,15 +19,26 @@ enum PCB_STATUS {
 enum MEMORY_STATUS {
     OCCUPIED, UNOCCUPIED
 };
+enum PAGE_STATUS {
+    ON, OFF
+};
 
 struct PCB {
+    struct page_table_item {
+
+        int mem_block;
+        PAGE_STATUS status;
+        //int ac_fds;
+        //int e_addr;
+
+    };
     // description
     int pid;
     int uid;
     // control and managemnt
     PCB_STATUS status;
     // resources
-    std::vector<int> page_table;
+    std::vector<page_table_item> page_table;
     int length;
 
     // about CPU..
@@ -42,7 +53,7 @@ struct PCB {
         else if (pcb.status == BLOCK)os << "BLOCK";
         os << " length: " << pcb.length << "page_table:";
         for (const auto &item : pcb.page_table) {
-            os << item << " ";
+            os << item.mem_block << " ";
         }
         return os;
     }

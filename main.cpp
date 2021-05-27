@@ -1,10 +1,9 @@
 #include <iostream>
 #include <queue>
 #include <list>
-#include <regex>
 #include "PCB.h"
-#include <cmath>
 
+#define MIN_PAGE 2
 #define PAGE_FORM_SIZE 50
 #define WORD_SIZE 8
 std::list<PCB> ready_queue;
@@ -15,7 +14,7 @@ int u_bound = 0, l_bound = 0;
 int page_form_num = 0;
 int ID_INDEX = 1;
 
-std::vector<int> allocate_memory(int length);
+std::vector<PCB::page_table_item> allocate_memory(int length);
 
 int free_memory(int pid);
 
@@ -187,21 +186,26 @@ int suspend_process(int pid) {
     monitor();
 }
 
-std::vector<int> allocate_memory(int length) {
+std::vector<PCB::page_table_item> allocate_memory(int length) {
     int page_num = length % PAGE_FORM_SIZE == 0 ? length / PAGE_FORM_SIZE : length / PAGE_FORM_SIZE + 1;
-    std::vector<int> page_table;
+    int live_page = page_num > MIN_PAGE ? MIN_PAGE : page_num;
+
+    std::vector<PCB::page_table_item> page_table;
     auto temp_bitmap{bitmap};
-    for (int i = 0; i < page_form_num, page_num > 0; ++i) {
-        for (int j = 0; j < WORD_SIZE, page_num > 0; ++j) {
+    for (int i = 0; i < page_form_num, live_page > 0; ++i) {
+        for (int j = 0; j < WORD_SIZE, live_page > 0; ++j) {
             if (temp_bitmap[i][j] != 1) {
                 temp_bitmap[i].set(j);
-                page_table.emplace_back(i * WORD_SIZE + j);
-                --page_num;
+                page_table.emplace_back(PCB::page_table_item{i * WORD_SIZE + j, ON});
+                --live_page;
             }
         }
     }
-    if (page_num == 0) {
+    if (live_page == 0) {
         bitmap = temp_bitmap;
+        for (int i = 0; i < page_num - live_page; ++i) {
+            page_table.emplace_back(PCB::page_table_item{-1, OFF});
+        }
         return page_table;
     } else {
         page_table.clear();
@@ -217,7 +221,7 @@ std::vector<int> allocate_memory(int length) {
 
 int free_memory(int pid) {
     // According to pid to locate the staring place of it.
-    std::vector<int> page_table;
+    std::vector<PCB::page_table_item> page_table;
 
     for (const auto &item : run_queue) {
         if (item.pid == pid) {
@@ -225,18 +229,12 @@ int free_memory(int pid) {
             break;
         }
     }
-
     // There is not the process.
     if (page_table.empty())return -1;
 
-    // Locate the partition in memory_list.
-    int counter = page_table.size();
-    auto temp_page_table{page_table};
     for (const auto &item : page_table) {
-        bitmap[item / WORD_SIZE].reset(item % WORD_SIZE);
-        --counter;
+        if (item.status == ON) {
+            bitmap[item.mem_block / WORD_SIZE].reset(item.mem_block % WORD_SIZE);
+        }
     }
-    if (counter != 0) return -1;
-    page_table = temp_page_table;
-
 }
