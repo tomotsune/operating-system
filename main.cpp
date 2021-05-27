@@ -3,18 +3,19 @@
 #include <list>
 #include <regex>
 #include "PCB.h"
+#include <cmath>
 
-#define PAGE_SIZE 4
+#define PAGE_FORM_SIZE 50
+#define WORD_SIZE 8
 std::list<PCB> ready_queue;
 std::list<PCB> run_queue;
 std::list<PCB> block_queue;
-std::list<partition> memory_list;
+std::vector<bitset<WORD_SIZE>> bitmap;
 int u_bound = 0, l_bound = 0;
-bitmap bitmap;
+int page_form_num = 0;
 int ID_INDEX = 1;
 
-
-int allocate_memory(int length);
+std::vector<int> allocate_memory(int length);
 
 int free_memory(int pid);
 
@@ -38,7 +39,15 @@ int main() {
         std::cout << "***Upper bound must be bigger than lower***" << std::endl;
         goto INPUT;
     }
-    bitmap = bitmap(u_bound - l_bound);
+    page_form_num = (u_bound - l_bound) / PAGE_FORM_SIZE;
+    int left_bit = page_form_num % WORD_SIZE;
+    int word_num = left_bit == 0 ? page_form_num / WORD_SIZE : page_form_num / WORD_SIZE + 1;
+    bitmap.resize(word_num);
+    if (left_bit != 0) {
+        for (int i = left_bit; i < WORD_SIZE; ++i) {
+            bitmap[word_num - 1].set(i);
+        }
+    }
     std::cout << "-------------INSTRUCTIONS------------" << std::endl;
     std::cout << "ONE: OperationCode + PID/SPACE" << std::endl;
     std::cout << "  1-->Create a new process" << std::endl;
@@ -88,7 +97,7 @@ void monitor() {
         std::cout << process << std::endl;
     }
     std::cout << "<memory>" << std::endl;
-    for (const auto &item : memory_list) {
+    for (const auto &item : bitmap) {
         std::cout << item << std::endl;
     }
 }
@@ -109,13 +118,13 @@ void dispatch() {
 }
 
 int create_process(int length) {
-    int begin = allocate_memory(length);
-    if (begin == -1)return -1;
+    auto page_table = allocate_memory(length);
+    if (page_table.empty())return -1;
     ready_queue.emplace_back(PCB{
             ID_INDEX++,
             0,
             READY,
-            begin,
+            page_table,
             length
     });
     dispatch();
@@ -178,49 +187,25 @@ int suspend_process(int pid) {
     monitor();
 }
 
-/**
- *
- * @param length : needed length of a process.
- * @return -1 :false, a integer :staring location.
- */
-int allocate_memory(int length) {
-    int pageNum = length / PAGE_SIZE + 1;
-
-
-    if (length <= 0 && u_bound - l_bound < length)return -1;
-    if (memory_list.empty()) {
-        memory_list.emplace_back(
-                l_bound,
-                u_bound - l_bound,
-                UNOCCUPIED
-        );
-    }
-
-    //
-    std::list<partition>::iterator iter;
-    for (iter = memory_list.begin(); iter != memory_list.end(); iter++) {
-        if (iter->status == UNOCCUPIED && iter->length >= length) {
-            break;
+std::vector<int> allocate_memory(int length) {
+    int page_num = length % PAGE_FORM_SIZE == 0 ? length / PAGE_FORM_SIZE : length / PAGE_FORM_SIZE + 1;
+    std::vector<int> page_table;
+    auto temp_bitmap{bitmap};
+    for (int i = 0; i < page_form_num, page_num > 0; ++i) {
+        for (int j = 0; j < WORD_SIZE, page_num > 0; ++j) {
+            if (temp_bitmap[i][j] != 1) {
+                temp_bitmap[i].set(j);
+                page_table.emplace_back(i * WORD_SIZE + j);
+                --page_num;
+            }
         }
     }
-    if (iter->length < length) {
-        return -1;
-    } else if (iter->length == length) {
-        iter->status = OCCUPIED;
-        return iter->begin;
-    } else if (iter->length > length) {
-        int left_length = iter->length - length;
-        int begin = iter->begin;
-
-        iter->status = OCCUPIED;
-        iter->length = length;
-
-        memory_list.insert(++iter, partition{
-                begin + length,
-                left_length,
-                UNOCCUPIED
-        });
-        return begin;
+    if (page_num == 0) {
+        bitmap = temp_bitmap;
+        return page_table;
+    } else {
+        page_table.clear();
+        return page_table;
     }
 }
 
@@ -229,58 +214,29 @@ int allocate_memory(int length) {
  * @param pid :The ID of a process, which is stored in the PCB.
  * @return -1 :false, 1 :success.
  */
+
 int free_memory(int pid) {
     // According to pid to locate the staring place of it.
-    int begin = INT_MAX;
+    std::vector<int> page_table;
+
     for (const auto &item : run_queue) {
         if (item.pid == pid) {
-            begin = item.memory_segment_pointer;
+            page_table = item.page_table;
             break;
         }
     }
+
     // There is not the process.
-    if (begin == INT_MAX)return -1;
+    if (page_table.empty())return -1;
 
     // Locate the partition in memory_list.
-    std::list<partition>::iterator iter;
-
-    for (iter = memory_list.begin(); iter != memory_list.end(); iter++) {
-        if (iter->begin == begin) {
-            break;
-        }
+    int counter = page_table.size();
+    auto temp_page_table{page_table};
+    for (const auto &item : page_table) {
+        bitmap[item / WORD_SIZE].reset(item % WORD_SIZE);
+        --counter;
     }
-    if (iter->begin != begin) { // 分配失败
-        return -1;
-    }
-    // free memory (and combine memory)
-    iter->status = UNOCCUPIED;
+    if (counter != 0) return -1;
+    page_table = temp_page_table;
 
-    // It's of importance to save the origin iter.
-
-    auto temp_iter{iter};
-    std::list<partition>::iterator prior_iter;
-    if (memory_list.begin() == temp_iter) {
-        prior_iter = temp_iter;
-    } else {
-        prior_iter = --temp_iter;
-        temp_iter++;
-    }
-
-    auto next_iter = memory_list.end() == ++temp_iter ? iter : temp_iter;
-
-
-    if (iter != prior_iter &&
-        prior_iter->begin + prior_iter->length == iter->begin &&
-        prior_iter->status == UNOCCUPIED) {
-        iter->length += prior_iter->length;
-        iter->begin = prior_iter->begin;
-        memory_list.erase(prior_iter);
-    }
-
-    if (iter != next_iter &&
-        iter->begin + iter->length == next_iter->begin &&
-        next_iter->status == UNOCCUPIED) {
-        iter->length += next_iter->length;
-        memory_list.erase(next_iter);
-    }
 }

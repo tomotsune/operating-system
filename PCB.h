@@ -27,7 +27,7 @@ struct PCB {
     // control and managemnt
     PCB_STATUS status;
     // resources
-    int memory_segment_pointer;
+    std::vector<int> page_table;
     int length;
 
     // about CPU..
@@ -40,8 +40,10 @@ struct PCB {
         if (pcb.status == READY)os << "READY";
         else if (pcb.status == RUN)os << "RUN";
         else if (pcb.status == BLOCK)os << "BLOCK";
-        os << " memory_segment_pointer: "
-           << pcb.memory_segment_pointer << " length: " << pcb.length;
+        os << " length: " << pcb.length << "page_table:";
+        for (const auto &item : pcb.page_table) {
+            os << item << " ";
+        }
         return os;
     }
 };
