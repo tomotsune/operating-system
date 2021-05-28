@@ -162,18 +162,18 @@ int end_process(int pid) {
 
 double access(int pid, int addr, std::function<void(std::deque<PCB::page_table_item> &, int, int)> alg) {
 
-
+    // Get the iterator of the process PCB based on the process id.
     std::list<PCB>::iterator target;
     for (target = run_queue.begin(); target != run_queue.end(); ++target) {
         if (target->pid == pid) {
             break;
         }
     }
-    int length = target->length;
-
+    // Perform id legitimacy verification and address out-of-bounds checks.
     if (target->pid != pid || addr >= target->length)return -1;
-    int live_num = 0;
-    int visit = 0;
+
+    int live_num = 0; // Number of pages in memory for the process.
+    int visit = 0; // Total number of page views, used to calculate the missing page rate.
     auto &page_table{target->page_table};
     for (const auto &item : page_table) {
         if (item.status == ON)++live_num;
@@ -182,23 +182,26 @@ double access(int pid, int addr, std::function<void(std::deque<PCB::page_table_i
 
     int page_number = addr / PAGE_FORM_SIZE;
     //int page_offset = addr % WORD_SIZE;
-    if (page_number > page_table.size())return -1;
 
     if (page_table[page_number].status == ON) {
+        // Case 1: The page corresponding to the logical address is in memory.
         page_table[page_number].ac_fds++;
-        double test = double(request[pid] + live_num) / (visit + 1);
         return double(request[pid] + live_num) / (visit + 1);
     } else {
         for (int i = 0; i < page_frame_num; ++i) {
             for (int j = 0; j < WORD_SIZE > 0; ++j) {
                 if (bitmap[i][j] == 0) {
                     if (live_num < MAX_PAGE) {
+                        // Case 2: The page corresponding to the logical address is not in memory
+                        // and the number of pages has not yet reached its page limit.
                         bitmap[i].set(j);
                         page_table[page_number] = PCB::page_table_item{i * WORD_SIZE + j, ON, 1};
                         request[pid]++;
                         return double(request[pid] + live_num) / (visit + 1);
                     } else {
-                        alg(page_table, i, j);
+                        // Case 3: The page corresponding to the logical address is not in memory
+                        // and the maximum number of pages has been reached.
+                        alg(page_table, i, j); // Callback, executing a FIFO or LRU policy depending on the parameters.
                         request[pid]++;
                         return double(request[pid] + live_num) / (visit + 1);
                     }
