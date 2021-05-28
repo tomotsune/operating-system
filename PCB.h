@@ -28,7 +28,7 @@ struct PCB {
 
         int mem_block;
         PAGE_STATUS status;
-        //int ac_fds;
+        int ac_fds;
         //int e_addr;
 
     };
@@ -38,7 +38,7 @@ struct PCB {
     // control and managemnt
     PCB_STATUS status;
     // resources
-    std::vector<page_table_item> page_table;
+    std::deque<page_table_item> page_table;
     int length;
 
     // about CPU..
@@ -53,7 +53,7 @@ struct PCB {
         else if (pcb.status == BLOCK)os << "BLOCK";
         os << " length: " << pcb.length << "page_table:";
         for (const auto &item : pcb.page_table) {
-            os << item.mem_block << " ";
+            os << item.mem_block << "(" << item.ac_fds << ")" << " ";
         }
         return os;
     }
