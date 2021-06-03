@@ -73,7 +73,7 @@ std::deque<PCB::page_table_item> allocate_memory(int length) {
     }
     if (availableNum < MIN_PAGE)throw std::string("in short of space");
     for (int i = 0; i < page_num; ++i) {
-        page_table.push_back(PCB::page_table_item{-1, OFF, 0});
+        page_table.push_back(PCB::page_table_item{-1, OFF});
     }
     return page_table;
     /*   if (live_page == 0) {
@@ -194,7 +194,6 @@ double access(int pid, int addr, std::function<void(PCB &, int)> alg) {
     auto &page_table{target->page_table};
     for (const auto &item : page_table) {
         if (item.status == ON)++live_num;
-        visit += item.ac_fds;
     }
 
     int page_number = addr / PAGE_FORM_SIZE;
@@ -227,7 +226,7 @@ double access(int pid, int addr, std::function<void(PCB &, int)> alg) {
                         // Case 2: The page corresponding to the logical address is not in memory
                         // and the number of pages has not yet reached its page limit.
                         bitmap[i].set(j);
-                        page_table[page_number] = PCB::page_table_item{i * WORD_SIZE + j, ON, 1};
+                        page_table[page_number] = PCB::page_table_item{i * WORD_SIZE + j, ON};
                         request[pid]++;
                         target->stack.push_back(page_number);
                         return double(request[pid] + live_num) / (visit + 1);

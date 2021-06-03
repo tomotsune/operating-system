@@ -28,7 +28,8 @@ struct PCB {
 
         int mem_block;
         PAGE_STATUS status;
-        int ac_fds;
+
+        // int ac_fds;
         //int e_addr;
     };
 
@@ -52,9 +53,13 @@ struct PCB {
         if (pcb.status == READY)os << "READY";
         else if (pcb.status == RUN)os << "RUN";
         else if (pcb.status == BLOCK)os << "BLOCK";
-        os << " length: " << pcb.length << "page_table:";
+        os << " length: " << pcb.length << std::endl << " page_table:";
         for (const auto &item : pcb.page_table) {
-            os << item.mem_block << "(" << item.ac_fds << ")" << " ";
+            os << item.mem_block << " ";
+        }
+        os << std::endl;
+        for (const auto &item : pcb.stack) {
+            os << item << " ";
         }
         return os;
     }
