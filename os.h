@@ -11,7 +11,7 @@
 #include <functional>
 #include "PCB.h"
 
-#define MIN_PAGE 2
+#define MIN_PAGE 3
 #define MAX_PAGE 5
 #define PAGE_FORM_SIZE 50
 #define WORD_SIZE 8

@@ -58,7 +58,7 @@ std::deque<PCB::page_table_item> allocate_memory(int length) {
 
     std::deque<PCB::page_table_item> page_table;
     auto temp_bitmap{bitmap};
-    auto temp{page_num};
+    auto temp{live_page};
     for (int i = 0; i < page_frame_num, live_page > 0; ++i) {
         for (int j = 0; j < WORD_SIZE, live_page > 0; ++j) {
             if (temp_bitmap[i][j] != 1) {
