@@ -6,6 +6,8 @@
 #define OS_1_OS_H
 
 #include <iostream>
+#include <cstdlib>
+#include <ctime>
 #include <queue>
 #include <list>
 #include <functional>
@@ -59,4 +61,5 @@ void FIFO(std::deque<PCB::page_table_item> &page_table, int i, int j);
 
 void LRU(std::deque<PCB::page_table_item> &page_table, int i, int j);
 
+void add_random(int num);
 #endif //OS_1_OS_H

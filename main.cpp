@@ -30,6 +30,7 @@ int main() {
     std::cout << "  4-->End a process" << std::endl;
     std::cout << "  5-->[FIFO]Access a address" << std::endl;
     std::cout << "  6-->[LRU]Access a address" << std::endl;
+    std::cout << "  7-->Add random number" << std::endl;
     std::cout << "TWO: monitor" << std::endl;
     std::cout << "--------------------------------------" << std::endl;
     LOOP:
@@ -58,6 +59,8 @@ int main() {
             } else if (oc == 6) {
                 double LRU_missing_rate = access(stoi(instruction.substr(2, 1)), stoi(instruction.substr(4)), LRU);
                 monitor(LRU_missing_rate);
+            } else if (oc == 7) {
+                add_random(stoi(instruction.substr(2)));
             }
             goto LOOP;
         } catch (std::exception e) {

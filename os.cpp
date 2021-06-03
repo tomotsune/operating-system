@@ -244,3 +244,12 @@ void LRU(std::deque<PCB::page_table_item> &page_table, int i, int j) {
     page_table[least_idx].mem_block = i * WORD_SIZE + j;
     page_table[least_idx].ac_fds++;
 }
+
+void add_random(int num) {
+    srand(time(0));
+    for (int i = 0; i < num; ++i) {
+        int x = rand() % (WORD_SIZE * bitmap.size());
+        bitmap[x / WORD_SIZE].set(x % WORD_SIZE);
+    }
+    monitor();
+}
