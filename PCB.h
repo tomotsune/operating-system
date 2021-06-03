@@ -30,8 +30,8 @@ struct PCB {
         PAGE_STATUS status;
         int ac_fds;
         //int e_addr;
-
     };
+
     // description
     int pid;
     int uid;
@@ -40,6 +40,7 @@ struct PCB {
     // resources
     std::deque<page_table_item> page_table;
     int length;
+    std::deque<int> stack;
 
     // about CPU..
     bool operator<(const PCB &rhs) const {

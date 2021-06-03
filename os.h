@@ -11,10 +11,11 @@
 #include <queue>
 #include <list>
 #include <functional>
+#include <stack>
 #include "PCB.h"
 
-#define MIN_PAGE 3
-#define MAX_PAGE 5
+#define MIN_PAGE 2
+#define MAX_PAGE 3
 #define PAGE_FORM_SIZE 50
 #define WORD_SIZE 8
 
@@ -55,11 +56,12 @@ int suspend_process(int pid);
  * @param Page replacement algorithm functions.
  * @return -1 or out-of-page rate.
  */
-double access(int pid, int addr, std::function<void(std::deque<PCB::page_table_item> &, int, int)> alg);
+double access(int pid, int addr, std::function<void(PCB &, int)> alg);
 
-void FIFO(std::deque<PCB::page_table_item> &page_table, int i, int j);
+void FIFO(PCB &pcb, int page_number);
 
-void LRU(std::deque<PCB::page_table_item> &page_table, int i, int j);
+void LRU(PCB &pcb, int page_number);
 
 void add_random(int num);
+
 #endif //OS_1_OS_H

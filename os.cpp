@@ -12,6 +12,7 @@ int u_bound = 0, l_bound = 0;
 int page_frame_num = 0;
 int request[10]{};
 int ID_INDEX = 1;
+std::stack<int> page_number;
 
 void monitor() {
     std::cout << "<process>" << std::endl;
@@ -54,29 +55,36 @@ void dispatch() {
 
 std::deque<PCB::page_table_item> allocate_memory(int length) {
     int page_num = length % PAGE_FORM_SIZE == 0 ? length / PAGE_FORM_SIZE : length / PAGE_FORM_SIZE + 1;
-    int live_page = page_num > MIN_PAGE ? MIN_PAGE : page_num;
+    // int live_page = page_num > MIN_PAGE ? MIN_PAGE : page_num;
 
     std::deque<PCB::page_table_item> page_table;
-    auto temp_bitmap{bitmap};
-    auto temp{live_page};
-    for (int i = 0; i < page_frame_num, live_page > 0; ++i) {
-        for (int j = 0; j < WORD_SIZE, live_page > 0; ++j) {
-            if (temp_bitmap[i][j] != 1) {
-                temp_bitmap[i].set(j);
+    /*   auto temp_bitmap{bitmap};
+       auto temp{live_page};*/
+    int availableNum = 0;
+    for (int i = 0; i < page_frame_num, availableNum < MIN_PAGE; ++i) {
+        for (int j = 0; j < WORD_SIZE, availableNum < MIN_PAGE > 0; ++j) {
+            if (bitmap[i][j] != 1) {
+                availableNum++;
+                /*temp_bitmap[i].set(j);
                 page_table.push_back(PCB::page_table_item{i * WORD_SIZE + j, ON, 1});
-                --live_page;
+                --live_page;*/
             }
         }
     }
-    if (live_page == 0) {
-        bitmap = temp_bitmap;
-        for (int i = 0; i < page_num - temp; ++i) {
-            page_table.push_back(PCB::page_table_item{-1, OFF, 0});
-        }
-        return page_table;
-    } else {
-        throw std::string("allocation err");
+    if (availableNum < MIN_PAGE)throw std::string("in short of space");
+    for (int i = 0; i < page_num; ++i) {
+        page_table.push_back(PCB::page_table_item{-1, OFF, 0});
     }
+    return page_table;
+    /*   if (live_page == 0) {
+           bitmap = temp_bitmap;
+           for (int i = 0; i < page_num - temp; ++i) {
+               page_table.push_back(PCB::page_table_item{-1, OFF, 0});
+           }
+           return page_table;
+       } else {
+           throw std::string("allocation err");
+       }*/
 }
 
 int free_memory(int pid) {
@@ -169,7 +177,7 @@ int end_process(int pid) {
     monitor();
 }
 
-double access(int pid, int addr, std::function<void(std::deque<PCB::page_table_item> &, int, int)> alg) {
+double access(int pid, int addr, std::function<void(PCB &, int)> alg) {
 
     // Get the iterator of the process PCB based on the process id.
     std::list<PCB>::iterator target;
@@ -191,58 +199,66 @@ double access(int pid, int addr, std::function<void(std::deque<PCB::page_table_i
 
     int page_number = addr / PAGE_FORM_SIZE;
     //int page_offset = addr % WORD_SIZE;
-
     if (page_table[page_number].status == ON) {
-        // Case 1: The page corresponding to the logical address is in memory.
-        page_table[page_number].ac_fds++;
+        alg(*target,
+            page_number); // Callback, executing a FIFO or LRU policy depending on the parameters.
+        request[pid]++;
         return double(request[pid] + live_num) / (visit + 1);
     } else {
-        for (int i = 0; i < page_frame_num; ++i) {
-            for (int j = 0; j < WORD_SIZE > 0; ++j) {
-                if (bitmap[i][j] == 0) {
-                    if (live_num < MAX_PAGE) {
+        if (live_num >= MAX_PAGE) {
+            // Case 3: The page corresponding to the logical address is not in memory
+            // and the maximum number of pages has been reached.
+            // 把要移出的页的的内存块给新调入的页.
+            page_table[page_number].mem_block = page_table[target->stack.front()].mem_block;
+            page_table[page_number].status = ON;
+
+            // 移除最先被调入的页.
+            page_table[target->stack.front()].mem_block = -1;
+            page_table[target->stack.front()].status = OFF;
+
+            // 出新入旧
+            target->stack.pop_front();
+            target->stack.push_back(page_number);
+            return double(request[pid] + live_num) / (visit + 1);
+        } else {// live < MAX
+            for (int i = 0; i < page_frame_num; ++i) {
+                for (int j = 0; j < WORD_SIZE > 0; ++j) {
+                    if (bitmap[i][j] == 0) {
                         // Case 2: The page corresponding to the logical address is not in memory
                         // and the number of pages has not yet reached its page limit.
                         bitmap[i].set(j);
                         page_table[page_number] = PCB::page_table_item{i * WORD_SIZE + j, ON, 1};
                         request[pid]++;
+                        target->stack.push_back(page_number);
                         return double(request[pid] + live_num) / (visit + 1);
-                    } else {
-                        // Case 3: The page corresponding to the logical address is not in memory
-                        // and the maximum number of pages has been reached.
-                        alg(page_table, i, j); // Callback, executing a FIFO or LRU policy depending on the parameters.
-                        request[pid]++;
-                        return double(request[pid] + live_num) / (visit + 1);
+
                     }
                 }
             }
         }
-        return -1;
     }
+
+    return -1;
+
 }
 
-void FIFO(std::deque<PCB::page_table_item> &page_table, int i, int j) {
-    page_table.pop_front();
-    std::deque<PCB::page_table_item>::iterator target;
-    for (target = page_table.begin(); target != page_table.end(); ++target) {
-        if (target->status == OFF) {
-            break;
-        }
-    }
-    page_table.insert(target, {i * WORD_SIZE + j, ON, 1});
+void FIFO(PCB &pcb, int page_number) {
+    /*pcb.stack.push_back(page_number);*/
 }
 
-void LRU(std::deque<PCB::page_table_item> &page_table, int i, int j) {
-    int least_ac_fds = INT_MAX;
-    int least_idx = 0;
-    for (int k = 0; k < page_table.size() && page_table[k].ac_fds > 0; ++k) {
-        if (page_table[k].ac_fds < least_ac_fds) {
-            least_ac_fds = page_table[k].ac_fds;
-            least_idx = k;
-        }
+void LRU(PCB &pcb, int page_number) {
+    // |  3  |   |  0  |
+    // |  2  | =>|  3  |
+    // |  1  |   |  2  |
+    // |_ 0 _|   |__1__|
+    // Case 1: The page corresponding to the logical address is in memory.
+    // page_table[page_number].ac_fds++;
+    std::deque<int>::iterator target;
+    for (target = pcb.stack.begin(); target != pcb.stack.end(); ++target) {
+        if (*target == page_number)break;
     }
-    page_table[least_idx].mem_block = i * WORD_SIZE + j;
-    page_table[least_idx].ac_fds++;
+    pcb.stack.erase(target);
+    pcb.stack.push_back(page_number);
 }
 
 void add_random(int num) {
