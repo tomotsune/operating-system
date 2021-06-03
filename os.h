@@ -4,6 +4,7 @@
 
 #ifndef OS_1_OS_H
 #define OS_1_OS_H
+
 #include <iostream>
 #include <queue>
 #include <list>
@@ -15,18 +16,19 @@
 #define PAGE_FORM_SIZE 50
 #define WORD_SIZE 8
 
-std::list<PCB> ready_queue;
-std::list<PCB> run_queue;
-std::list<PCB> blocked_queue;
-std::vector<bitset<WORD_SIZE>> bitmap;
-int u_bound = 0, l_bound = 0;
-int page_frame_num = 0;
-int request[10]{};
-int ID_INDEX = 1;
+extern std::list<PCB> ready_queue;
+extern std::list<PCB> run_queue;
+extern std::list<PCB> blocked_queue;
+extern std::vector<bitset<WORD_SIZE>> bitmap;
+extern int u_bound, l_bound;
+extern int page_frame_num;
+extern int request[10];
+extern int ID_INDEX;
 
 std::deque<PCB::page_table_item> allocate_memory(int length);
 
 int free_memory(int pid);
+
 /**
  * Printing overall info.
  */

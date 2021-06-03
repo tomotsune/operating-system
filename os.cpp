@@ -4,6 +4,15 @@
 
 #include "os.h"
 
+std::list<PCB> ready_queue;
+std::list<PCB> run_queue;
+std::list<PCB> blocked_queue;
+std::vector<bitset<WORD_SIZE>> bitmap;
+int u_bound = 0, l_bound = 0;
+int page_frame_num = 0;
+int request[10]{};
+int ID_INDEX = 1;
+
 void monitor() {
     std::cout << "<process>" << std::endl;
     auto whole_processes{ready_queue};
