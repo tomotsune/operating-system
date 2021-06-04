@@ -1,4 +1,4 @@
-<div align=center><img src="logo_01(2).jpg"></div>
+![logo_01(2).jpg](logo_01(2).jpg)
 
 # OS #
 ## 1. 进程控制 ##
