@@ -73,7 +73,7 @@ std::deque<PCB::page_table_item> allocate_memory(int length) {
     }
     if (availableNum < MIN_PAGE)throw std::string("in short of space");
     for (int i = 0; i < page_num; ++i) {
-        page_table.push_back(PCB::page_table_item{-1, OFF});
+        page_table.push_back(PCB::page_table_item{-1, OFF, 0});
     }
     return page_table;
     /*   if (live_page == 0) {
@@ -193,16 +193,17 @@ double access(int pid, int addr, std::function<void(PCB &, int)> alg) {
     int visit = 0; // Total number of page views, used to calculate the missing page rate.
     auto &page_table{target->page_table};
     for (const auto &item : page_table) {
-        if (item.status == ON)++live_num;
+        if (item.status == ON) {
+            ++live_num;
+            visit += item.ac_fds;
+        }
     }
-
     int page_number = addr / PAGE_FORM_SIZE;
     //int page_offset = addr % WORD_SIZE;
     if (page_table[page_number].status == ON) {
-        alg(*target,
-            page_number); // Callback, executing a FIFO or LRU policy depending on the parameters.
-        request[pid]++;
-        return double(request[pid] + live_num) / (visit + 1);
+        alg(*target, page_number); // Callback, executing a FIFO or LRU policy depending on the parameters.
+        page_table[page_number].ac_fds++;
+        return double(request[pid]) / (visit + 1);
     } else {
         if (live_num >= MAX_PAGE) {
             // Case 3: The page corresponding to the logical address is not in memory
@@ -210,7 +211,7 @@ double access(int pid, int addr, std::function<void(PCB &, int)> alg) {
             // 把要移出的页的的内存块给新调入的页.
             page_table[page_number].mem_block = page_table[target->stack.front()].mem_block;
             page_table[page_number].status = ON;
-
+            page_table[page_number].ac_fds = ++page_table[target->stack.front()].ac_fds;
             // 移除最先被调入的页.
             page_table[target->stack.front()].mem_block = -1;
             page_table[target->stack.front()].status = OFF;
@@ -218,7 +219,9 @@ double access(int pid, int addr, std::function<void(PCB &, int)> alg) {
             // 出新入旧
             target->stack.pop_front();
             target->stack.push_back(page_number);
-            return double(request[pid] + live_num) / (visit + 1);
+
+            request[pid]++;
+            return double(request[pid]) / (visit + 1);
         } else {// live < MAX
             for (int i = 0; i < page_frame_num; ++i) {
                 for (int j = 0; j < WORD_SIZE > 0; ++j) {
@@ -226,11 +229,11 @@ double access(int pid, int addr, std::function<void(PCB &, int)> alg) {
                         // Case 2: The page corresponding to the logical address is not in memory
                         // and the number of pages has not yet reached its page limit.
                         bitmap[i].set(j);
-                        page_table[page_number] = PCB::page_table_item{i * WORD_SIZE + j, ON};
-                        request[pid]++;
+                        page_table[page_number] = PCB::page_table_item{i * WORD_SIZE + j, ON, 1};
                         target->stack.push_back(page_number);
-                        return double(request[pid] + live_num) / (visit + 1);
 
+                        request[pid]++;
+                        return double(request[pid]) / (visit + 1);
                     }
                 }
             }

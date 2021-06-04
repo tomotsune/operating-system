@@ -28,8 +28,7 @@ struct PCB {
 
         int mem_block;
         PAGE_STATUS status;
-
-        // int ac_fds;
+        int ac_fds;
         //int e_addr;
     };
 
@@ -57,10 +56,11 @@ struct PCB {
         for (const auto &item : pcb.page_table) {
             os << item.mem_block << " ";
         }
-        os << std::endl;
+        os << std::endl << " stack: ";
         for (const auto &item : pcb.stack) {
             os << item << " ";
         }
+        os << " <-";
         return os;
     }
 };
