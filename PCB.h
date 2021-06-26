@@ -29,6 +29,20 @@ struct PCB {
     int length;
 
     // about CPU..
+    int arrival_time; //到达时间
+    int burst_time; //运行时间
+    //int finished_time; //结束运行时间
+    int runned_time = 0; //已运行时间
+
+    /*PCB(int pid, int uid, PCB_STATUS status, int memorySegmentPointer, int length) : pid(pid), uid(uid), status(status),
+                                                                                     memory_segment_pointer(
+                                                                                             memorySegmentPointer),
+                                                                                     length(length) {}
+
+    PCB(int pid, int uid, PCB_STATUS status, int memorySegmentPointer, int length, int arrivalTime, int burstTime)
+            : pid(pid), uid(uid), status(status), memory_segment_pointer(memorySegmentPointer), length(length),
+              arrival_time(arrivalTime), burst_time(burstTime) {}*/
+
     bool operator<(const PCB &rhs) const {
         return pid < rhs.pid;
     }
@@ -43,6 +57,7 @@ struct PCB {
         return os;
     }
 };
+
 
 struct partition {
     int begin;

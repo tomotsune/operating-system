@@ -17,13 +17,15 @@ int free_memory(int pid);
 
 void monitor();
 
-int create_process(int length);
+int create_process(int length, int arrival, int burst);
 
 int block_process(int pid);
 
 int end_process(int pid);
 
 int suspend_process(int pid);
+
+void dispatch(int alg);
 
 int main() {
     std::string instruction;
@@ -41,11 +43,13 @@ int main() {
     std::cout << "  3-->Suspend a process" << std::endl;
     std::cout << "  3-->Block a process" << std::endl;
     std::cout << "  4-->End a process" << std::endl;
+    std::cout << "  5-->Dispatch [alg]" << std::endl;
     std::cout << "TWO: monitor" << std::endl;
     std::cout << "--------------------------------------" << std::endl;
     LOOP:
     std::cout << "_>";
-    getline(std::cin, instruction);
+    //getline(std::cin, instruction);
+    std::cin >> instruction;
     if (instruction == "monitor") {
         monitor();
         goto LOOP;
@@ -53,7 +57,10 @@ int main() {
         try {
             int oc = stoi(instruction.substr(0, 1));
             if (oc == 1) {
-                int flag = create_process(std::stoi(instruction.substr(2)));
+                //int flag = create_process(std::stoi(instruction.substr(2)));
+                int size, arrival, burst;
+                std::cin >> size >> arrival >> burst;
+                int flag = create_process(size, arrival, burst);
                 if (flag == -1) {
                     std::cout << "***memory allocation failed***" << std::endl;
                 }
@@ -63,6 +70,10 @@ int main() {
                 block_process(stoi(instruction.substr(2)));
             } else if (oc == 4) {
                 end_process(stoi(instruction.substr(2)));
+            } else if (oc == 5) {
+                int alg;
+                std::cin >> alg;
+                dispatch(alg);
             }
             goto LOOP;
         } catch (std::exception e) {
@@ -92,29 +103,109 @@ void monitor() {
 /**
  * This method schedules the process to run on the processor.
  */
-void dispatch() {
+void dispatch(int alg) {
+
     // It can simulate 4-core CPU, and can be executed by 4 processes simultaneously
-    if (run_queue.size() < 4 && !ready_queue.empty()) {
-        // According to the process scheduling algorithm, select the appropriate process to run on the processor.
-        PCB pcb = ready_queue.front();
-        pcb.status = RUN;
-        run_queue.emplace_back(pcb);
-        ready_queue.pop_front();
+////////////////////////////////////////////////////////////////////
+//    if (run_queue.size() < 4 && !ready_queue.empty()) {
+//        // According to the process scheduling algorithm, select the appropriate process to run on the processor.
+//        PCB pcb = ready_queue.front();
+//        pcb.status = RUN;
+//        run_queue.emplace_back(pcb);
+//        ready_queue.pop_front();
+//    }
+    if (alg == 1) {
+        // FCFS
+        ready_queue.sort([](PCB a, PCB b) {
+            return a.arrival_time < b.arrival_time;
+        });
+        //記錄運行完成時間
+        int finished = ready_queue.front().arrival_time;
+        //記錄各個進程的周轉時間 [完成時間-到達時間]
+        double total_turnarounds = 0;
+        double total_turnarounds_with_rights = 0;
+        for (const auto &item : ready_queue) {
+            //std::cout << item << std::endl;
+            finished += item.burst_time;
+            // 如果在前一个进程结束后到达..
+            if (item.arrival_time > finished)
+                finished = item.arrival_time + item.burst_time;
+            double turnaround = finished - item.arrival_time;
+            total_turnarounds += turnaround;
+            double turnaround_with_rights = turnaround / item.burst_time;
+            total_turnarounds_with_rights += turnaround_with_rights;
+
+            std::cout << "pid: " << item.pid << "turnaround_time:" << turnaround
+                      << " Turnaround time with rights:" << turnaround_with_rights << std::endl;
+        }
+        std::cout << "average:" << total_turnarounds / ready_queue.size()
+                  << "average_with_rights:" << total_turnarounds_with_rights / ready_queue.size();
+
     }
-    monitor();
+    if (alg == 2) {
+        //SJF
+        ready_queue.sort([](PCB a, PCB b) {
+            return a.arrival_time < b.arrival_time;
+        });
+        int finished = ready_queue.front().burst_time + ready_queue.front().arrival_time;
+        double total_turnarounds = finished - ready_queue.front().arrival_time;
+        double total_turnarounds_with_rights = total_turnarounds / ready_queue.front().burst_time;
+        std::cout << "pid: " << ready_queue.front().pid << "turnaround_time:" << total_turnarounds
+                  << " Turnaround time with rights:" << total_turnarounds_with_rights << std::endl;
+        ready_queue.pop_front();
+        ready_queue.sort([](PCB a, PCB b) {
+            return a.burst_time < b.burst_time;
+        });
+        for (const auto &item : ready_queue) {
+            finished += item.burst_time;
+            // 如果在前一个进程结束后到达..
+            if (item.arrival_time > finished)
+                finished = item.arrival_time + item.burst_time;
+            double turnaround = finished - item.arrival_time;
+            total_turnarounds += turnaround;
+            double turnaround_with_rights = turnaround / item.burst_time;
+            total_turnarounds_with_rights += turnaround_with_rights;
+
+            std::cout << "pid: " << item.pid << "turnaround_time:" << turnaround
+                      << " Turnaround time with rights:" << turnaround_with_rights << std::endl;
+        }
+        std::cout << "average:" << total_turnarounds / (ready_queue.size() + 1)
+                  << "average_with_rights:" << total_turnarounds_with_rights / (ready_queue.size() + 1);
+    }
+    if (alg == 3) {
+        //RR
+        ready_queue.sort([](PCB a, PCB b) {
+            return a.arrival_time < b.arrival_time;
+        });
+        int num = 0;
+        while (num < ready_queue.size()) {
+            if (ready_queue.front().runned_time < ready_queue.front().burst_time) {
+                ready_queue.front().runned_time += 2;
+                std::cout << "pid: " << ready_queue.front().pid << " run 2ms" << std::endl;
+            } else num++;
+
+
+            ready_queue.push_back(ready_queue.front());
+            ready_queue.pop_front();
+        }
+    }
+
 }
 
-int create_process(int length) {
+int create_process(int length, int arrival, int burst) {
     int begin = allocate_memory(length);
     if (begin == -1)return -1;
+
     ready_queue.emplace_back(PCB{
             ID_INDEX++,
             0,
             READY,
             begin,
-            length
+            length,
+            arrival,
+            burst
     });
-    dispatch();
+    //dispatch();
 }
 
 int block_process(int pid) {
@@ -126,7 +217,7 @@ int block_process(int pid) {
     target->status = BLOCK;
     block_queue.emplace_back(*target);
     run_queue.erase(target);
-    dispatch();
+    //dispatch();
     monitor();
 }
 
@@ -170,7 +261,7 @@ int suspend_process(int pid) {
     target->status = READY;
     ready_queue.emplace_back(*target);
     run_queue.erase(target);
-    dispatch();
+    //dispatch();
     monitor();
 }
 
