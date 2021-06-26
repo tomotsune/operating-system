@@ -1,14 +1,12 @@
 //
-// Created by haipinHu on 2021/5/13.
+// Created by tomot on 2021/5/13.
 //
 
 #ifndef OS_1_PCB_H
 #define OS_1_PCB_H
 
 #include <ostream>
-#include <bitset>
 
-using std::bitset;
 /**
  * Process Control Block
  * Created by haipinHu on 5/15/2021
@@ -19,28 +17,16 @@ enum PCB_STATUS {
 enum MEMORY_STATUS {
     OCCUPIED, UNOCCUPIED
 };
-enum PAGE_STATUS {
-    ON, OFF
-};
 
 struct PCB {
-    struct page_table_item {
-
-        int mem_block;
-        PAGE_STATUS status;
-        int ac_fds;
-        //int e_addr;
-    };
-
     // description
     int pid;
     int uid;
     // control and managemnt
     PCB_STATUS status;
     // resources
-    std::deque<page_table_item> page_table;
+    int memory_segment_pointer;
     int length;
-    std::deque<int> stack;
 
     // about CPU..
     bool operator<(const PCB &rhs) const {
@@ -52,15 +38,8 @@ struct PCB {
         if (pcb.status == READY)os << "READY";
         else if (pcb.status == RUN)os << "RUN";
         else if (pcb.status == BLOCK)os << "BLOCK";
-        os << " length: " << pcb.length << std::endl << " page_table:";
-        for (const auto &item : pcb.page_table) {
-            os << item.mem_block << " ";
-        }
-        os << std::endl << " stack: ";
-        for (const auto &item : pcb.stack) {
-            os << item << " ";
-        }
-        os << " <-";
+        os << " memory_segment_pointer: "
+           << pcb.memory_segment_pointer << " length: " << pcb.length;
         return os;
     }
 };
@@ -80,6 +59,5 @@ struct partition {
         return os;
     }
 };
-
 
 #endif //OS_1_PCB_H
